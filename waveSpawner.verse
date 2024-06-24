@@ -79,6 +79,8 @@ enemy_wave_spawner := class(creative_device):
     @editable HUDTotalZombieKilled : hud_message_device = hud_message_device{}
     #HUD MESSAGE GAME START
     @editable HUDMessageGameStart : hud_message_device = hud_message_device{}
+    #HUD INFORMATION ABOUT ZOMBIE REMANING AND UNLOCK
+    @editable HUDMessageInformationButtonUnlocked : hud_message_device = hud_message_device{}
     #HUD MESSAGE ZOMBIE KILLED NEEDED
     @editable HUDMessageZombieKilledNeeded : hud_message_device = hud_message_device{}
     #CONDITIONAL BUTTON GRILLE FENCE
@@ -89,7 +91,7 @@ enemy_wave_spawner := class(creative_device):
     @editable BillBoardFence : billboard_device = billboard_device {}
     #BILLBOARD EXIT
     @editable BillBoardExit : billboard_device = billboard_device {}
-
+    @editable SFXOpen<public> : audio_player_device = audio_player_device{}
 
     ##### GOLDS DROSP PAR LES MOBS #####
     @editable GoldsDropedByFiend : item_granter_device = item_granter_device{}
@@ -101,7 +103,8 @@ enemy_wave_spawner := class(creative_device):
 
     ## --- Game Logic
     _gameActive : logic = false
-
+    var _ZombieKilledCount1 : logic = false
+    var _ZombieKilledCount2 : logic = false
     var totalEnemiesKilled : int = 0
     var roundEnemiesKilled : int = 0
 
@@ -117,10 +120,10 @@ enemy_wave_spawner := class(creative_device):
     var GoldsDropedByRangedBase : int = 10
     var GoldsDropedByBruteBase : int = 15
 
-    var MODE_DEBUG : logic = true
-    var MODE_DEBUG_BOUTON : logic = true
+    var MODE_DEBUG : logic = false
+    var MODE_DEBUG_BOUTON : logic = false
     var currentWave : int = 0
-    var waveKilledGoal : int = 5
+    var waveKilledGoal : int = 15
     var creaturesSpawned: int = 0
     var additionalCreaturesSpawned: int = 0
     #########################################
@@ -147,7 +150,7 @@ enemy_wave_spawner := class(creative_device):
     SetDynamicTextActualRound<localizes>(currWave:int) : message = "Wave : {currWave}" 
     SetDynamicTextTotalEnnemyKilledDuringGame<localizes>(totalEnnemyKilled:int) : message = "Total Zombies Killed : {totalEnnemyKilled}"
     SetDynamicTextHUDStartGame<localizes>() : message = "Find a way to <Strong>survive</> and <Strong>escape!</> You need to restore <EM>electricity</> at the <EM>guard</> <EM>post.</>"
-    SetDynamicTextZombieKilledNeeded<localizes>(TotalZombieKilledDuringGameMessage:int) : message = "{TotalZombieKilledDuringGameMessage} Zombie remaining to show the button to unlock the Fence. keep killing zombie and keep following quests,."
+    SetDynamicTextZombieKilledNeeded<localizes>(TotalZombieKilledDuringGameMessage:int) : message = "{TotalZombieKilledDuringGameMessage} Creatures remaining to continue."
     SetDynamicTextMissingItemToOpenDoor<localizes>() : message = "Missing items required.." 
 
     SetDynamicTextFenceButtonUnlocked<localizes>() : message = "The button near the <Strong>fences</> has been <EM>enabled!</> You can now continue your <EM>journey</> "
@@ -197,9 +200,7 @@ enemy_wave_spawner := class(creative_device):
     OnButtonInteractedWith(InPlayer:agent): void=
         SpawnWave()
    
-            
-    SleepWave()<suspends>:void=
-        Sleep(10.0)  
+ 
         
     SFXOnWaveSpawn():void=
         SFXWaveSpawn.Play()
@@ -224,7 +225,7 @@ enemy_wave_spawner := class(creative_device):
         #On récup les spawners (on reset en gros
         GetCreatureSpawnersFiend()  
         GetCreatureSpawnersRanged()
-
+        GetCreatureSpawnersBrute()
         #On joue le son de début de round
         SFXOnWaveSpawn()
         
@@ -243,24 +244,50 @@ enemy_wave_spawner := class(creative_device):
 
        
         
-        # Boucle de génération des ennemis pour la vague actuelle ( +1 au cas ou l'IA d'une créa est bug)
-        for (x := 0..(waveKilledGoal) + 1):
+        # Boucle de génération des ennemis pour la vague actuelle ( +3 au cas ou l'IA d'une créa est bug)
+        for (x := 0..(waveKilledGoal) + 3):
             if(MODE_DEBUG = true):
                 Logger.Print("ENTERING LOOP ITERATIONS: {x}  | GOAL : {waveKilledGoal + 1}",?Level:= log_level.Debug)
             
             # Générer des créatures "Fiend" si la vague actuelle est inférieure ou égale à 4
-            if (currentWave <= 4):
-                var iFiend: int = GetRandomInt(0, CreatureSpawners.Length)
-                if (spwnrFiend := CreatureSpawners[iFiend]):
-                    spwnrFiend.Spawn()
-                    set creaturesSpawned = creaturesSpawned + 1
-                        if (TempArray := CreatureSpawners.RemoveElement[iFiend]):
-                            set CreatureSpawners = TempArray
-                                if(MODE_DEBUG = true):        
-                                    Logger.Print("Creature spawned Fiends :  {creaturesSpawned}",?Level:= log_level.Debug)
+            if (currentWave <= 7):
+                if(creaturesSpawned < (waveKilledGoal + 3)):
+                    var iFiend: int = GetRandomInt(0, CreatureSpawners.Length)
+                    if (spwnrFiend := CreatureSpawners[iFiend]):
+                        spwnrFiend.Spawn()
+                        set creaturesSpawned = creaturesSpawned + 1
+                            if (TempArray := CreatureSpawners.RemoveElement[iFiend]):
+                                set CreatureSpawners = TempArray
+                                    if(MODE_DEBUG = true):        
+                                        Logger.Print("Creature spawned Fiends :  {creaturesSpawned}",?Level:= log_level.Debug)
+
+
+
+
+            if (currentWave > 7 and currentWave <= 14):                    
+                if(creaturesSpawned < (waveKilledGoal + 3)):
+                                      
+                    var iFiend: int = GetRandomInt(0, CreatureSpawners.Length)
+                        if (spwnrFiend := CreatureSpawners[iFiend]):
+                            spwnrFiend.Spawn()
+                            set creaturesSpawned = creaturesSpawned + 1
+                                if (TempArray := CreatureSpawners.RemoveElement[iFiend]):
+                                    set CreatureSpawners = TempArray
+                                        if (MODE_DEBUG = true):
+                                            Logger.Print("Creature spawned Fiends : {creaturesSpawned}",?Level:= log_level.Debug)
+                                                    
+                    var iRanged: int = GetRandomInt(0, CreatureSpawnersRanged.Length)
+                        if (spwnrRanged := CreatureSpawnersRanged[iRanged]):
+                            spwnrRanged.Spawn()
+                            set creaturesSpawned = creaturesSpawned + 1
+                                if (TempArray := CreatureSpawnersRanged.RemoveElement[iRanged]):
+                                    set CreatureSpawnersRanged = TempArray
+                                        if (MODE_DEBUG = true):
+                                            Logger.Print("Creature spawned Ranged {creaturesSpawned}",?Level:= log_level.Debug)
+
                 
-            else:
-                if(creaturesSpawned < waveKilledGoal):
+            if (currentWave > 14): 
+                if(creaturesSpawned < (waveKilledGoal + 3)):
                 # Mix Fiend and Ranged creatures for waves greater than 4
                     var iFiend: int = GetRandomInt(0, CreatureSpawners.Length)
                         if (spwnrFiend := CreatureSpawners[iFiend]):
@@ -279,15 +306,26 @@ enemy_wave_spawner := class(creative_device):
                                     set CreatureSpawnersRanged = TempArray
                                         if (MODE_DEBUG = true):
                                             Logger.Print("Creature spawned Ranged {creaturesSpawned}",?Level:= log_level.Debug)
+
+                    var iBrute: int = GetRandomInt(0, CreatureSpawnersBrute.Length)
+                        if (spwnrBrute := CreatureSpawnersBrute[iBrute]):
+                            spwnrBrute.Spawn()
+                            set creaturesSpawned = creaturesSpawned + 1
+                                if (TempArray := CreatureSpawnersBrute.RemoveElement[iBrute]):
+                                    set CreatureSpawnersBrute = TempArray
+                                        if (MODE_DEBUG = true):
+                                            Logger.Print("Creature spawned Brute {creaturesSpawned}",?Level:= log_level.Debug)
                      
         
         
         
         # Afficher le message pour le noueau type d'ennemi si nécessaire
-            if (currentWave = 5):
-                HudMessageNewEnnemy.Show()
             if (currentWave = 10):
+                HudMessageNewEnnemy.Show()
+            if (currentWave = 15):
                 HudMessageNewEnnemy.Show()    
+            #if (currentWave = 10):
+                #HudMessageNewEnnemy.Show()    
     
         #On défini le nbs de Z à kill pour la currentwave
         
@@ -328,11 +366,20 @@ enemy_wave_spawner := class(creative_device):
 
 
     DebugWaveZombie(InAgent: agent): void =
-            if (waveKilledGoal - roundEnemiesKilled <= 2):
+            if ((waveKilledGoal - roundEnemiesKilled) <= 5):
+                GetCreatureSpawnersFiend()
                 ClearCreaturesFiend()
+
+                GetCreatureSpawnersRanged()
+                ClearCreaturesRanged()
+
+                GetCreatureSpawnersBrute()
+                ClearCreaturesBrute()
+
                 if(MODE_DEBUG = true):
                     Logger.Print("Wave cleared. Creatures CLEARED")
             else:
+
                 if(MODE_DEBUG = true):
                     Logger.Print("Wave not cleared yet. Remaining zombies:   {waveKilledGoal} - {roundEnemiesKilled}")
         
@@ -491,61 +538,73 @@ enemy_wave_spawner := class(creative_device):
         ##### BILLBOARD EXIT ###############
 
         #Si le nbs de Z tués est supérieur à l'objectif
-        if (TotalZombieKilledDuringGame > ZombieKilledNeededStep1 and TotalZombieKilledDuringGame = 100):
+        if (TotalZombieKilledDuringGame >= ZombieKilledNeededStep1 and _ZombieKilledCount1 = false):
             #On enable le bouton
             ConditionalButtonFence.Enable()
             #On cache le texte
             BillBoardFence.HideText()
-            HUDMessageGameStart.SetText(SetDynamicTextFenceButtonUnlocked())
-            HUDMessageGameStart.SetDisplayTime(5.0)
-            HUDMessageGameStart.Show()
+            HUDMessageInformationButtonUnlocked.SetText(SetDynamicTextFenceButtonUnlocked())
+            HUDMessageInformationButtonUnlocked.SetDisplayTime(5.0)
+            HUDMessageInformationButtonUnlocked.Show()
+            set _ZombieKilledCount1 = true
 
 
-        if(TotalZombieKilledDuringGame > ZombieKilledNeededStep5 and TotalZombieKilledDuringGame = 500):
+        if(TotalZombieKilledDuringGame >= ZombieKilledNeededStep5 and _ZombieKilledCount2 = false):
             ConditionalButtonExitGame.Enable()
             BillBoardExit.HideText()
-            HUDMessageGameStart.SetText(SetDynamicTextExitButton())
-            HUDMessageGameStart.SetDisplayTime(5.0)
-            HUDMessageGameStart.Show()
+            HUDMessageInformationButtonUnlocked.SetText(SetDynamicTextExitButton())
+            HUDMessageInformationButtonUnlocked.SetDisplayTime(5.0)
+            HUDMessageInformationButtonUnlocked.Show()
+            set _ZombieKilledCount2 = true
 
         if(MODE_DEBUG = true):
             Print("{totalEnemiesKilled} Total Fiends Killed!")
             Print("{waveKilledGoal - roundEnemiesKilled} Until the next round!")
 
-        #UpdateUI()
+     
 
         #On check si on a atteint le nbs de zombies à tué
         if (roundEnemiesKilled = waveKilledGoal):
            
-            if(currentWave <= 4):
+            if(currentWave <= 7):
              #On récup et on clear les Créa FIEND
                 GetCreatureSpawnersFiend()
                 ClearCreaturesFiend()
-
-                GetCreatureSpawnersBrute()
-                ClearCreaturesBrute()
-            if(currentWave > 4 and currentWave < 10):
                 GetCreatureSpawnersRanged()
                 ClearCreaturesRanged()
-            if(currentWave >= 10):
                 GetCreatureSpawnersBrute()
                 ClearCreaturesBrute()
+
+            else:
+                GetCreatureSpawnersFiend()
+                ClearCreaturesFiend()
+                GetCreatureSpawnersBrute()
+                ClearCreaturesBrute()
+                GetCreatureSpawnersRanged()
+                ClearCreaturesRanged()  
+            <# if(currentWave > 7 and currentWave < 10):
+                GetCreatureSpawnersRanged()
+                ClearCreaturesRanged()
+            if(currentWave > 10):
+                GetCreatureSpawnersBrute()
+                ClearCreaturesBrute() #>
 
                 
             #On joue le son d'inro
             SFXOnWaveEnded()
             #On Affiche le timer & On set le timer sur X secondes en fonction de la wave actuelle
-            if(currentWave <= 4):
+            if(currentWave <= 7):
                 
-                TimerBetweenRoundsDevice.SetMaxDuration(10.0)
+                TimerBetweenRoundsDevice.SetMaxDuration(5.0)
                 TimerBetweenRoundsDevice.Enable()
                 TimerBetweenRoundsDevice.Start()
-            if(currentWave > 4):
-                TimerBetweenRoundsDevice.SetMaxDuration(20.0)
+            else:
+                TimerBetweenRoundsDevice.SetMaxDuration(7.0)
                 TimerBetweenRoundsDevice.Enable()
                 TimerBetweenRoundsDevice.Start()
             #ON File l'xp
             RoundXPAccolade.Award(inAgent)
 
 
-          1
+    LargeModdedWeapon():void=
+        Print("TEST")
